@@ -1,0 +1,50 @@
+{
+  "name": "back-scuti",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.980.0",
+    "@aws-sdk/lib-storage": "^3.980.0",
+    "@aws-sdk/middleware-flexible-checksums": "^3.972.3",
+    "@prisma/client": "5.22.0",
+    "@types/multer": "^2.0.0",
+    "axios": "^1.13.4",
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.10.1",
+    "multer": "^2.0.2",
+    "multer-s3": "^3.0.1",
+    "pg": "^8.18.0",
+    "socket.io": "^4.8.3",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/morgan": "^1.9.10",
+    "@types/multer-s3": "^3.0.3",
+    "@types/node": "^25.0.9",
+    "@types/pg": "^8.16.0",
+    "@types/socket.io": "^3.0.1",
+    "nodemon": "^3.1.11",
+    "prisma": "5.22.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

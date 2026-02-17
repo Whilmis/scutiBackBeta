@@ -1,0 +1,453 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String    // Hashed
+  fullName      String
+  
+  // Datos del Perfil (Onboarding Steps 2 & 3)
+  headline      String?   // Ej: "Senior Product Designer"
+  bio           String?   // "Professional Manifesto"
+  yearsOfExp    Int       @default(0)
+  websiteUrl    String?
+  avatarUrl     String?
+  
+  // Preferencias (Array de Enums)
+  exchangeModes ExchangeMode[] 
+
+  // Relaciones LMS
+  skills        UserSkill[] 
+  createdCourses Course[]    // Courses created by the user
+  enrollments    Enrollment[] // Courses the user is enrolled in
+  reviews       Review[]
+  orders        Order[]
+
+  // Wallet / Coins
+  coinsBalance  Int       @default(0)
+  coinTransactions CoinTransaction[]
+  
+  // --- SOCIAL RELATIONS ---
+  followedBy    Follows[] @relation("following")
+  following     Follows[] @relation("follower")
+  
+  conversations Conversation[] // Implicit many-to-many
+  messages      Message[]
+  
+  posts         Post[]
+  comments      Comment[]
+  likes         Like[]
+  
+  activityLogs  ActivityLog[]
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Catálogo Global de Skills
+model Category {
+  id          String   @id @default(uuid())
+  title       String   @unique 
+  icon        String   
+  
+  // Styling for UI (Glassmorphism theme)
+  colorClass  String   
+  bgClass     String   
+  borderClass String   
+  
+  skills      Skill[]
+  courses     Course[]
+  posts       Post[]
+  createdAt   DateTime @default(now())
+}
+
+model Skill {
+  id          String      @id @default(uuid())
+  name        String      @unique 
+  categoryId  String
+  category    Category    @relation(fields: [categoryId], references: [id])
+  
+  users       UserSkill[] 
+  courses     Course[]
+  posts       Post[]
+}
+
+// Tabla Intermedia: El "ADN" del usuario
+model UserSkill {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skillId     String
+  skill       Skill     @relation(fields: [skillId], references: [id])
+  
+  level       Int       @default(1) // 1-5 (Puntos en la UI)
+  intention   Intention // TEACH o LEARN
+
+  @@unique([userId, skillId, intention]) // Evita duplicados lógicos
+}
+
+model Course {
+  id          String   @id @default(uuid())
+  creatorId   String
+  creator     User     @relation(fields: [creatorId], references: [id])
+  
+  // Step 1: Info
+  title       String
+  description String?  // Check if your DB supports @db.Text, normally yes for Postgres
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  level       CourseLevel   @default(BEGINNER)
+  duration    String?       // Ej: "12 Hours"
+  learningOutcomes String[]
+  
+  // Step 2: Content
+  sections    Section[]
+  
+  // Step 3: Logistics & Pricing (REAL MONEY)
+  isSwapOpen  Boolean  @default(true)
+  
+  price       Decimal  @default(0.00) @db.Decimal(10, 2)
+  currency    String   @default("USD")
+  
+  scheduleType ScheduleType @default(FLEXIBLE)
+  startDate    DateTime?
+  frequency    String?      // Ej: "Weekly"
+  
+  // Ubicación Refactorizada
+  meetingUrl   String?      // Zoom / Google Meet
+  address      String?      // Dirección física
+  latitude     Float?
+  longitude    Float?
+  
+  deliveryMode DeliveryMode @default(ONLINE)
+  type         CourseFormat @default(HYBRID)
+
+  // Step 4: Status
+  status      CourseStatus @default(DRAFT)
+  coverImage  String?
+  
+  // Relation to Skill (Optional for Drafts)
+  skillId     String?
+  skill       Skill?    @relation(fields: [skillId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Ratings
+  averageRating Decimal @default(0.0) @db.Decimal(2, 1)
+  reviewCount   Int     @default(0)
+  reviews       Review[]
+  
+  // Enrollments & Orders
+  enrollments Enrollment[]
+  orders      Order[]
+
+  // Social Context
+  conversations Conversation[]
+  posts         Post[]
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  rating    Int      // 1-5
+  comment   String?
+  
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  
+  createdAt DateTime @default(now())
+}
+
+model Section {
+  id        String   @id @default(uuid())
+  title     String
+  order     Int
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons   Lesson[]
+}
+
+model Lesson {
+  id        String   @id @default(uuid())
+  title     String
+  order     Int
+  sectionId String
+  section   Section  @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  
+  type      LessonType @default(VIDEO)
+  
+  // Video Content
+  videoUrl  String?
+  duration  Int?     // Minutos
+  
+  // Logistics for LIVE/WORKSHOP
+  startDate    DateTime?
+  meetingUrl   String?
+  address      String?
+  latitude     Float?
+  longitude    Float?
+
+  summary   String?  // @db.Text
+  isPublished Boolean @default(false)
+  
+  materials Json?    // [{ type: "PDF", url: "...", name: "Guía" }]
+  keyPoints String[]
+}
+
+model Enrollment {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id])
+  
+  enrolledAt DateTime @default(now())
+  progress   Int      @default(0) // % completed
+  
+  @@unique([userId, courseId])
+}
+
+model Order {
+  id        String      @id @default(uuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id])
+  courseId  String
+  course    Course      @relation(fields: [courseId], references: [id])
+  
+  amount    Decimal     @db.Decimal(10, 2)
+  currency  String      @default("USD")
+  
+  method    PaymentMethod
+  status    OrderStatus @default(PENDING)
+  
+  // For Transfer/Cash
+  proofUrl  String?
+  
+  // For Stripe
+  stripeIntentId String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CoinTransaction {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  amount    Int      // Positive for deposit, negative for spend
+  type      TransactionType
+  description String?
+  
+  createdAt DateTime @default(now())
+}
+
+enum PaymentMethod {
+  TRANSFER
+  CASH
+  COINS
+  STRIPE
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  REJECTED
+  CANCELLED
+}
+
+enum TransactionType {
+  PURCHASE
+  DEPOSIT
+  REWARD
+  REFUND
+}
+
+enum LessonType {
+  VIDEO
+  LIVE
+  WORKSHOP
+  TEXT
+}
+
+enum CourseLevel {
+  BEGINNER
+  PROFESSIONAL
+  EXPERT
+}
+
+enum ScheduleType {
+  AUTO_SCHEDULE
+  FLEXIBLE
+  HYBRID
+}
+
+enum DeliveryMode {
+  ONLINE
+  IN_PERSON
+  HYBRID
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum Intention {
+  TEACH
+  LEARN
+}
+
+enum ExchangeMode {
+  MENTORSHIP
+  WORKSHOP
+  COLLABORATION
+  COFFEE_CHAT
+}
+
+// ... existing enums ...
+
+enum CourseFormat {
+  SELF_PACED
+  LIVE
+  IN_PERSON
+  HYBRID
+}
+
+// --- NEW SOCIAL FEATURES ---
+
+model Follows {
+  follower    User @relation("follower", fields: [followerId], references: [id])
+  followerId  String
+  following   User @relation("following", fields: [followingId], references: [id])
+  followingId String
+
+  @@id([followerId, followingId])
+}
+
+model Conversation {
+  id        String   @id @default(uuid())
+  users     User[]   // Implicit many-to-many
+  
+  courseId  String?
+  course    Course?  @relation(fields: [courseId], references: [id])
+  
+  messages  Message[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  content        String?      // Text content (optional if image only)
+  imageUrl       String?
+  
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id])
+  
+  isRead         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+}
+
+enum PostType {
+  TEXT
+  IMAGE
+  VIDEO
+}
+
+model Post {
+  id          String   @id @default(uuid())
+  content     String?  // Text description
+  mediaUrl    String?  // Video or Image URL
+  type        PostType @default(TEXT)
+  
+  authorId    String
+  author      User     @relation(fields: [authorId], references: [id])
+  
+  // Attachments / Context
+  courseId    String?  // Promote a course
+  course      Course?  @relation(fields: [courseId], references: [id])
+  
+  // Categorization
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id])
+  skillId     String?
+  skill       Skill?    @relation(fields: [skillId], references: [id])
+
+  // Engagement
+  viewCount    Int      @default(0)
+  likeCount    Int      @default(0)
+  commentCount Int      @default(0)
+  shareCount   Int      @default(0)
+  
+  // Sharing (Recursive)
+  sharedPostId String?
+  sharedPost   Post?    @relation("SharedPost", fields: [sharedPostId], references: [id])
+  shares       Post[]   @relation("SharedPost")
+
+  comments    Comment[]
+  likes       Like[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  
+  createdAt DateTime @default(now())
+}
+
+model Like {
+  id        String   @id @default(uuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  createdAt DateTime @default(now())
+  
+  @@unique([postId, userId])
+}
+
+enum ActivityType {
+  ENROLLED_COURSE
+  PUBLISHED_COURSE
+  CREATED_POST
+  FOLLOWED_USER
+  COMPLETED_LESSON
+}
+
+model ActivityLog {
+  id        String       @id @default(uuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id])
+  
+  type      ActivityType
+  metadata  Json?        // Stores IDs or extra info (e.g. { courseId: "..." })
+  
+  createdAt DateTime     @default(now())
+}

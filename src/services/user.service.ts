@@ -87,8 +87,8 @@ export const addSkills = async (userId: string, skillsData: any[]) => {
     return results;
 };
 
-export const getUserProfile = async (userId: string) => {
-    return prisma.user.findUnique({
+export const getUserProfile = async (userId: string, observerId?: string) => {
+    const user = await prisma.user.findUnique({
         where: { id: userId },
         include: {
             skills: {
@@ -99,9 +99,24 @@ export const getUserProfile = async (userId: string) => {
                         }
                     }
                 }
-            }
+            },
+            _count: {
+                select: { followedBy: true, following: true }
+            },
+            ...(observerId ? {
+                followedBy: {
+                    where: { followerId: observerId },
+                    take: 1
+                }
+            } : {})
         }
     });
+
+    if (!user) return null;
+
+    const isFollowing = observerId ? (user as any).followedBy?.length > 0 : false;
+
+    return { ...user, isFollowing };
 };
 
 // --- Social Features (Follow System) ---
@@ -129,7 +144,7 @@ export const unfollowUser = async (followerId: string, followingId: string) => {
     });
 };
 
-export const getUserNetwork = async (userId: string) => {
+export const getUserNetwork = async (userId: string, observerId?: string) => {
     const followers = await prisma.follows.findMany({
         where: { followingId: userId },
         include: { follower: { select: { id: true, fullName: true, avatarUrl: true, headline: true } } }
@@ -140,9 +155,25 @@ export const getUserNetwork = async (userId: string) => {
         include: { following: { select: { id: true, fullName: true, avatarUrl: true, headline: true } } }
     });
 
+    // Optimization: If observerId exists, fetch who they follow to compute 'isFollowing'
+    let myFollowingIds = new Set<string>();
+    if (observerId) {
+        const myFollows = await prisma.follows.findMany({
+            where: { followerId: observerId },
+            select: { followingId: true }
+        });
+        myFollowingIds = new Set(myFollows.map(f => f.followingId));
+    }
+
     return {
-        followers: followers.map(f => f.follower),
-        following: following.map(f => f.following),
+        followers: followers.map(f => ({
+            ...f.follower,
+            isFollowing: myFollowingIds.has(f.followerId)
+        })),
+        following: following.map(f => ({
+            ...f.following,
+            isFollowing: myFollowingIds.has(f.followingId)
+        })),
         counts: {
             followers: followers.length,
             following: following.length

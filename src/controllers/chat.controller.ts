@@ -34,9 +34,9 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
     try {
         const senderId = req.user.id;
         const conversationId = req.params.id as string;
-        const { content } = req.body;
+        const { content, imageUrl } = req.body;
 
-        const message = await chatService.sendMessage(senderId, conversationId, content);
+        const message = await chatService.sendMessage(senderId, conversationId, content, imageUrl);
 
         // Real-time update
         socketService.emitNewMessage(conversationId, message);
@@ -53,6 +53,38 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
         const conversationId = req.params.id as string;
         const messages = await chatService.getConversationMessages(conversationId);
         res.status(200).json(messages);
+    } catch (error: any) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+export const markAsRead = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.user.id;
+        const conversationId = req.params.id as string;
+
+        await chatService.markMessagesAsRead(conversationId, userId);
+
+        res.status(200).json({ message: 'Messages marked as read' });
+    } catch (error: any) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
+export const uploadImage = async (req: AuthRequest, res: Response) => {
+    try {
+        if (!req.file) {
+            res.status(400).json({ message: 'No file uploaded' });
+            return;
+        }
+
+        // @ts-ignore
+        const location = req.file.location;
+
+        res.status(200).json({
+            message: 'Image uploaded successfully',
+            imageUrl: location
+        });
     } catch (error: any) {
         res.status(400).json({ message: error.message });
     }

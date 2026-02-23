@@ -9,7 +9,9 @@ const router = Router();
 
 router.use(authenticate);
 
-router.post('/', feedController.createPost);
+import { uploadPostMedia } from '../middlewares/upload.middleware';
+
+router.post('/', uploadPostMedia.single('media'), feedController.createPost);
 router.get('/', feedController.getFeed); // ?type=global|following
 router.post('/:id/like', feedController.likePost);
 router.post('/:id/comments', feedController.addComment);

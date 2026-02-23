@@ -27,7 +27,9 @@ router.patch('/profile/avatar', uploadAvatar.single('avatar'), userController.up
 // Social Routes
 router.post('/:id/follow', userController.followUser);
 router.delete('/:id/follow', userController.unfollowUser);
+
 router.get('/:id/network', userController.getNetwork); // Get followers/following
 router.get('/:id/activity', userController.getActivity); // Get user activity log
+router.get('/:id', userController.getPublicProfile); // Public Profile (Must be last to avoid conflict with specific sub-resources)
 
 export default router;

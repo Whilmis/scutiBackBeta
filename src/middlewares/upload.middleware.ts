@@ -4,7 +4,7 @@ import s3Client from '../config/s3';
 
 const bucketName = process.env.AWS_BUCKET_NAME || 'scuti-avatars-dev';
 
-type FolderType = 'avatars' | 'courses/covers' | 'courses/materials' | 'courses/videos' | 'orders/proofs';
+type FolderType = 'avatars' | 'courses/covers' | 'courses/materials' | 'courses/videos' | 'orders/proofs' | 'posts/media' | 'chat/images';
 type AllowedFileType = 'image' | 'video' | 'document' | 'all';
 
 const createUploadMiddleware = (folder: FolderType, type: AllowedFileType, maxFileSize: number = 5 * 1024 * 1024) => {
@@ -55,3 +55,5 @@ export const uploadCourseCover = createUploadMiddleware('courses/covers', 'image
 export const uploadLessonVideo = createUploadMiddleware('courses/videos', 'video', 1024 * 1024 * 1024); // 1GB
 export const uploadLessonMaterial = createUploadMiddleware('courses/materials', 'document', 100 * 1024 * 1024); // 100MB
 export const uploadPaymentProof = createUploadMiddleware('orders/proofs', 'image', 5 * 1024 * 1024); // 5MB
+export const uploadPostMedia = createUploadMiddleware('posts/media', 'all', 50 * 1024 * 1024); // 50MB for videos
+export const uploadChatImage = createUploadMiddleware('chat/images', 'image', 5 * 1024 * 1024); // 5MB

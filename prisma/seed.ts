@@ -86,7 +86,26 @@ async function main() {
         },
     });
 
-    console.log({ tech, design, marketing, sports });
+    // 5. Example Manual Category
+    const manualCategory = await prisma.category.upsert({
+        where: { title: 'Manual Category' },
+        update: {},
+        create: {
+            title: 'Manual Category', // Name of the category
+            icon: 'star', // Icon name (from Material Icons or similar)
+            colorClass: 'text-blue-400', // Tailwind text color
+            bgClass: 'bg-blue-500/10', // Tailwind bg color
+            borderClass: 'border-blue-500/20', // Tailwind border color
+            skills: {
+                create: [
+                    { name: 'Skill One' },
+                    { name: 'Skill Two' }
+                ]
+            }
+        },
+    });
+
+    console.log({ tech, design, marketing, sports, manualCategory });
 }
 
 main()

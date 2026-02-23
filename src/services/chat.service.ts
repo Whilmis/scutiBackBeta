@@ -2,14 +2,33 @@
 import prisma from '../lib/prisma';
 
 export const createConversation = async (userIds: string[], courseId?: string) => {
-    // Check if conversation already exists between these precise users (generic approach)
-    // For 2 users, it's simpler. For group chat, it's complex. Let's assume direct messages for now.
+    // Ensure the array of IDs is always sorted so [sender, recipient] matches [recipient, sender]
+    const sortedUserIds = [...userIds].sort();
 
-    // Create new
+    // 1. Check if a conversation already exists with EXACTLY these users (and courseId)
+    // We expect userIds to be exactly 2 for now, so let's find a conversation that has both.
+    const existingConversations = await prisma.conversation.findMany({
+        where: {
+            AND: sortedUserIds.map(id => ({
+                users: { some: { id } }
+            })),
+            ...(courseId ? { courseId } : { courseId: null })
+        },
+        include: { users: true }
+    });
+
+    // 2. Filter to find one that has exactly the same number of users
+    const exactMatch = existingConversations.find(conv => conv.users.length === sortedUserIds.length);
+
+    if (exactMatch) {
+        return exactMatch; // Return existing conversation
+    }
+
+    // 3. Create new if not found
     return prisma.conversation.create({
         data: {
             users: {
-                connect: userIds.map(id => ({ id }))
+                connect: sortedUserIds.map(id => ({ id }))
             },
             courseId
         },
@@ -38,12 +57,13 @@ export const getUserConversations = async (userId: string) => {
     });
 };
 
-export const sendMessage = async (senderId: string, conversationId: string, content: string) => {
+export const sendMessage = async (senderId: string, conversationId: string, content: string, imageUrl?: string) => {
     const message = await prisma.message.create({
         data: {
             senderId,
             conversationId,
-            content
+            content,
+            imageUrl
         }
     });
 
@@ -64,6 +84,20 @@ export const getConversationMessages = async (conversationId: string) => {
             sender: {
                 select: { id: true, fullName: true, avatarUrl: true }
             }
+        }
+    });
+};
+
+export const markMessagesAsRead = async (conversationId: string, userId: string) => {
+    // Mark all messages as read in this conversation that WERE NOT sent by the current user
+    return prisma.message.updateMany({
+        where: {
+            conversationId,
+            senderId: { not: userId },
+            isRead: false
+        },
+        data: {
+            isRead: true
         }
     });
 };

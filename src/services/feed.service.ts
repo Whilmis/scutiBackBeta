@@ -16,7 +16,9 @@ export const createPost = async (userId: string, data: any) => {
             courseId: data.courseId,
             categoryId: data.categoryId,
             skillId: data.skillId,
-            sharedPostId: data.sharedPostId
+            sharedPostId: data.sharedPostId,
+            linkUrl: data.linkUrl,
+            swapLink: data.swapLink
         },
         include: {
             author: {

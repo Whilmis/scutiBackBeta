@@ -10,6 +10,9 @@ import categoryRoutes from './routes/category.routes';
 import orderRoutes from './routes/order.routes';
 import chatRoutes from './routes/chat.routes';
 import feedRoutes from './routes/feed.routes';
+import skillRoutes from './routes/skill.routes';
+import swapRoutes from './routes/swap.routes';
+import calendarRoutes from './routes/calendar.routes';
 
 const app = express();
 
@@ -26,6 +29,9 @@ app.use('/orders', orderRoutes);
 app.use('/categories', categoryRoutes); // Categories exposed at root level /categories
 app.use('/chat', chatRoutes);
 app.use('/feed', feedRoutes);
+app.use('/skills', skillRoutes);
+app.use('/swaps', swapRoutes);
+app.use('/calendar', calendarRoutes);
 
 app.get('/', (req, res) => {
     res.json({ message: 'Scuti Backend API is running' });

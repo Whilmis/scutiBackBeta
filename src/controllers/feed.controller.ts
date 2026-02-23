@@ -9,7 +9,21 @@ interface AuthRequest extends Request {
 export const createPost = async (req: AuthRequest, res: Response) => {
     try {
         const userId = req.user.id;
-        const post = await feedService.createPost(userId, req.body);
+        const data = req.body;
+
+        if (req.file) {
+            // S3 location
+            data.mediaUrl = (req.file as any).location || req.file.path;
+
+            // Auto-detect type if not provided
+            if (!data.type) {
+                const mime = req.file.mimetype;
+                if (mime.startsWith('image/')) data.type = 'IMAGE';
+                if (mime.startsWith('video/')) data.type = 'VIDEO';
+            }
+        }
+
+        const post = await feedService.createPost(userId, data);
         res.status(201).json(post);
     } catch (error: any) {
         res.status(400).json({ message: error.message });

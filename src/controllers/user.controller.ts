@@ -72,6 +72,7 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
             return;
         }
 
+        const userAny = user as any;
         const response = {
             id: user.id,
             email: user.email,
@@ -82,14 +83,18 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
             yearsOfExp: user.yearsOfExp,
             websiteUrl: user.websiteUrl || undefined,
             exchangeModes: user.exchangeModes,
-            skills: user.skills.map(us => ({
+            skills: userAny.skills.map((us: any) => ({
                 level: us.level,
                 intention: us.intention,
                 skill: {
                     name: us.skill.name,
                     category: us.skill.category?.title || 'Other'
                 }
-            }))
+            })),
+            _count: {
+                followers: userAny._count.followedBy,
+                following: userAny._count.following
+            }
         };
 
         res.status(200).json(response);
@@ -128,7 +133,8 @@ export const unfollowUser = async (req: AuthRequest, res: Response) => {
 export const getNetwork = async (req: AuthRequest, res: Response) => {
     try {
         const userId = (req.params.id as string) || req.user.id; // Can view own or others
-        const network = await userService.getUserNetwork(userId);
+        const observerId = req.user.id;
+        const network = await userService.getUserNetwork(userId, observerId);
         res.status(200).json(network);
     } catch (error: any) {
         res.status(400).json({ message: error.message });
@@ -142,5 +148,47 @@ export const getActivity = async (req: AuthRequest, res: Response) => {
         res.status(200).json(activities);
     } catch (error: any) {
         res.status(400).json({ message: error.message });
+    }
+};
+
+export const getPublicProfile = async (req: AuthRequest, res: Response) => {
+    try {
+        const userId = req.params.id as string;
+        const observerId = req.user?.id;
+
+        const user = await userService.getUserProfile(userId, observerId);
+
+        if (!user) {
+            res.status(404).json({ message: 'User not found' });
+            return;
+        }
+
+        // Return public info only
+        const userAny = user as any;
+        const response = {
+            id: user.id,
+            fullName: user.fullName,
+            headline: user.headline || undefined,
+            bio: user.bio || undefined,
+            avatarUrl: user.avatarUrl || undefined,
+            websiteUrl: user.websiteUrl || undefined,
+            skills: userAny.skills.map((us: any) => ({
+                level: us.level,
+                intention: us.intention,
+                skill: {
+                    name: us.skill.name,
+                    category: us.skill.category?.title || 'Other'
+                }
+            })),
+            _count: {
+                followers: userAny._count.followedBy,
+                following: userAny._count.following
+            },
+            isFollowing: user.isFollowing
+        };
+
+        res.status(200).json(response);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
     }
 };

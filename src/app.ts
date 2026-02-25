@@ -13,6 +13,7 @@ import feedRoutes from './routes/feed.routes';
 import skillRoutes from './routes/skill.routes';
 import swapRoutes from './routes/swap.routes';
 import calendarRoutes from './routes/calendar.routes';
+import aiRoutes from './routes/ai.routes';
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use('/feed', feedRoutes);
 app.use('/skills', skillRoutes);
 app.use('/swaps', swapRoutes);
 app.use('/calendar', calendarRoutes);
+app.use('/ai', aiRoutes);
 
 app.get('/', (req, res) => {
     res.json({ message: 'Scuti Backend API is running' });

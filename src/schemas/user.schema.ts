@@ -9,7 +9,12 @@ export const updateProfileSchema = z.object({
         headline: z.string().optional(),
         bio: z.string().optional(),
         yearsOfExp: z.number().int().min(0).optional(),
-        websiteUrl: z.string().url().optional().or(z.literal("")),
+        websiteUrl: z.string()
+            .optional()
+            .refine(
+                (val) => !val || val === "" || /^https?:\/\/.+\..+/.test(val),
+                { message: "Invalid websiteUrl" }
+            ),
         avatarUrl: z.string().url().optional().or(z.literal("")),
         exchangeModes: z.array(ExchangeModeEnum).optional(),
     }),

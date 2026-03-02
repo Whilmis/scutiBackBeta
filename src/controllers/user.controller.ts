@@ -10,7 +10,12 @@ interface AuthRequest extends Request {
 export const updateProfile = async (req: AuthRequest, res: Response) => {
     try {
         const userId = req.user.id;
-        const user = await userService.updateProfile(userId, req.body);
+        // Solo pasar websiteUrl si viene y no es vacío
+        const data = { ...req.body };
+        if (typeof data.websiteUrl === 'undefined' || data.websiteUrl === "") {
+            delete data.websiteUrl;
+        }
+        const user = await userService.updateProfile(userId, data);
         res.status(200).json({
             message: 'Profile updated successfully',
             user: {
@@ -22,6 +27,10 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
             }
         });
     } catch (error: any) {
+        // Si el error viene de Zod, devolver mensaje claro
+        if (error?.issues?.[0]?.message === "Invalid websiteUrl") {
+            return res.status(422).json({ message: "Invalid websiteUrl" });
+        }
         res.status(400).json({ message: error.message });
     }
 };
@@ -44,13 +53,28 @@ export const addSkills = async (req: AuthRequest, res: Response) => {
 export const updateAvatar = async (req: AuthRequest, res: Response) => {
     try {
         if (!req.file) {
-            res.status(400).json({ message: 'No file uploaded' });
-            return;
+            return res.status(400).json({ message: 'No file uploaded' });
         }
 
-        const userId = req.user.id;
+        // Validación extra por si multer no lo filtra
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        if (!allowedTypes.includes(req.file.mimetype)) {
+            return res.status(415).json({ message: 'Unsupported file type' });
+        }
+        if (req.file.size && req.file.size > 5 * 1024 * 1024) {
+            return res.status(413).json({ message: 'File too large (max 5MB)' });
+        }
+
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ message: 'User not authenticated' });
+        }
+
         // multer-s3 uses 'location' for the URL, cloudinary uses 'path'
         const avatarUrl = (req.file as any).location || req.file.path;
+        if (!avatarUrl) {
+            return res.status(500).json({ message: 'Upload failed: No URL returned' });
+        }
         const result = await userService.updateProfile(userId, { avatarUrl: avatarUrl });
 
         res.status(200).json({
@@ -58,7 +82,19 @@ export const updateAvatar = async (req: AuthRequest, res: Response) => {
             avatarUrl: result.avatarUrl
         });
     } catch (error: any) {
-        res.status(400).json({ message: error.message });
+        // Logging para depuración
+        console.error('Avatar upload error:', error);
+        // Multer errors
+        if (error?.code === 'LIMIT_FILE_SIZE') {
+            return res.status(413).json({ message: 'File too large (max 5MB)' });
+        }
+        if (error?.message && error.message.includes('Invalid file type')) {
+            return res.status(415).json({ message: 'Unsupported file type' });
+        }
+        if (error?.name === 'NoSuchBucket') {
+            return res.status(500).json({ message: 'Storage bucket not found' });
+        }
+        res.status(500).json({ message: error?.message || 'Internal Server Error' });
     }
 };
 

@@ -3,16 +3,20 @@ import * as activityService from './activity.service';
 import { ActivityType } from '@prisma/client';
 
 export const updateProfile = async (userId: string, data: any) => {
+    // Solo incluir websiteUrl si está presente en data
+    const updateData: any = {
+        headline: data.headline,
+        bio: data.bio,
+        yearsOfExp: data.yearsOfExp,
+        avatarUrl: data.avatarUrl,
+        exchangeModes: data.exchangeModes,
+    };
+    if (typeof data.websiteUrl !== 'undefined') {
+        updateData.websiteUrl = data.websiteUrl;
+    }
     return prisma.user.update({
         where: { id: userId },
-        data: {
-            headline: data.headline,
-            bio: data.bio,
-            yearsOfExp: data.yearsOfExp,
-            websiteUrl: data.websiteUrl,
-            avatarUrl: data.avatarUrl,
-            exchangeModes: data.exchangeModes,
-        },
+        data: updateData,
     });
 };
 

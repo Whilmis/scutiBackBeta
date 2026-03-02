@@ -79,30 +79,59 @@ Highlight something they want to learn or teach, or mention their recent activit
 };
 
 export const chatWithAI = async (userId: string, messages: any[]) => {
-    const contextPrompt = await getUserContextPrompt(userId);
+    // Buscar o crear el usuario IA dinámicamente si no existe
+    const aiEmail = 'ai@scuti.com';
+    let aiUser = await prisma.user.findUnique({ where: { email: aiEmail } });
 
-    // Ensure the system prompt is always injected at the beginning of the conversation history
+    if (!aiUser) {
+        const bcrypt = require('bcryptjs'); // Usando la dependencia común de auth
+        const hashedPassword = await bcrypt.hash('scuti-ai-secret-password-1234', 10);
+        aiUser = await prisma.user.create({
+            data: {
+                email: aiEmail,
+                password: hashedPassword,
+                fullName: 'Scuti AI',
+                avatarUrl: 'https://ui-avatars.com/api/?name=Scuti+AI&background=6d28d9&color=fff',
+            }
+        });
+    }
+
+    // Buscar o crear conversación entre userId y aiUser.id
+    const chatService = require('./chat.service');
+    let conversation = await chatService.createConversation([userId, aiUser.id]);
+
+    // Tomar el último mensaje del usuario (el que acaba de enviar)
+    const lastUserMessage = messages[messages.length - 1];
+    // Guardar mensaje del usuario
+    await chatService.sendMessage(userId, conversation.id, lastUserMessage.content);
+
+    // Preparar contexto y mensajes para la IA
+    const contextPrompt = await getUserContextPrompt(userId);
     const systemMessage = {
         role: 'system',
         content: `${contextPrompt}\nYour goal is to be helpful and provide personalized learning/teaching advice based on their profile. Be concise.`
     };
-
     const cleanMessages = messages.map((m: any) => ({
         role: m.role || 'user',
         content: m.content || ''
     }));
-
     const finalMessages = [systemMessage, ...cleanMessages];
 
+    // Obtener respuesta de la IA
     const chatCompletion = await getGroqClient().chat.completions.create({
         messages: finalMessages,
         model: 'llama-3.3-70b-versatile',
         temperature: 0.7,
         max_tokens: 1024,
     });
+    const aiReply = chatCompletion.choices[0]?.message?.content || "I'm having trouble thinking, try again.";
+
+    // Guardar respuesta de la IA
+    await chatService.sendMessage(aiUser.id, conversation.id, aiReply);
 
     return {
-        reply: chatCompletion.choices[0]?.message?.content || "I'm having trouble thinking, try again.",
-        role: 'assistant'
+        reply: aiReply,
+        role: 'assistant',
+        conversationId: conversation.id
     };
 };

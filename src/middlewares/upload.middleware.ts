@@ -50,7 +50,7 @@ const createUploadMiddleware = (folder: FolderType, type: AllowedFileType, maxFi
 };
 
 // Export pre-configured middlewares
-export const uploadAvatar = createUploadMiddleware('avatars', 'image', 5 * 1024 * 1024); // 5MB
+export const uploadAvatar = createUploadMiddleware('avatars', 'image', 20 * 1024 * 1024); // 20MB
 export const uploadCourseCover = createUploadMiddleware('courses/covers', 'image', 10 * 1024 * 1024); // 10MB
 export const uploadLessonVideo = createUploadMiddleware('courses/videos', 'video', 1024 * 1024 * 1024); // 1GB
 export const uploadLessonMaterial = createUploadMiddleware('courses/materials', 'document', 100 * 1024 * 1024); // 100MB
